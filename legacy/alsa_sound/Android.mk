@@ -1,4 +1,4 @@
-# hardware/libaudio-alsa/Android.mk
+## hardware/libaudio-alsa/Android.mk
 #
 # Copyright 2008 Wind River Systems
 #
@@ -17,7 +17,7 @@ endif
 ifeq ($(strip $(QCOM_MULTI_VOICE_SESSION_ENABLED)),true)
     LOCAL_CFLAGS += -DQCOM_MULTI_VOICE_SESSION_ENABLED
 endif
-ifneq ($(strip $(QCOM_AUDIO_FORMAT_ENABLED)),false)
+ifeq ($(strip $(QCOM_AUDIO_FORMAT_ENABLED)),true)
     LOCAL_CFLAGS += -DQCOM_AUDIO_FORMAT_ENABLED
 endif
 ifneq ($(strip $(QCOM_CSDCLIENT_ENABLED)),false)
@@ -48,8 +48,8 @@ ifneq ($(strip $(QCOM_TUNNEL_LPA_ENABLED)),false)
     common_cflags += -DQCOM_TUNNEL_LPA_ENABLED
 endif
 
-ifeq ($(call is-board-platform,msm8974),true)
-    common_cflags += -DTARGET_8974
+ifeq ($(TARGET_BOARD_PLATFORM),msm8974)
+  LOCAL_CFLAGS += -DTARGET_8974
 endif
 
 ifneq ($(ALSA_DEFAULT_SAMPLE_RATE),)

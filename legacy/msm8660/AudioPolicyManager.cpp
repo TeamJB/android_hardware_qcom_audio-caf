@@ -1849,11 +1849,6 @@ audio_devices_t AudioPolicyManager::getDeviceForInputSource(int inputSource)
             device = AUDIO_DEVICE_IN_BUILTIN_MIC;
         }
         break;
-    case AUDIO_SOURCE_VOICE_COMMUNICATION:
-        if (mAvailableInputDevices & AUDIO_DEVICE_IN_COMMUNICATION) {
-            device = AUDIO_DEVICE_IN_COMMUNICATION;
-        }
-        break;
     case AUDIO_SOURCE_CAMCORDER:
         if (mAvailableInputDevices & AUDIO_DEVICE_IN_BACK_MIC) {
             device = AUDIO_DEVICE_IN_BACK_MIC;

@@ -99,7 +99,7 @@ AudioHardwareInterface *AudioHardwareALSA::create() {
 
 AudioHardwareALSA::AudioHardwareALSA() :
     mALSADevice(0),mVoipInStreamCount(0),mVoipOutStreamCount(0),mVoipMicMute(false),
-    mVoipBitRate(0),mCallState(CALL_INACTIVE),mAcdbHandle(NULL),mCsdHandle(NULL),mMicMute(0)
+    mVoipBitRate(0),mMicMute(0),mCallState(CALL_INACTIVE),mAcdbHandle(NULL),mCsdHandle(NULL)
 {
     FILE *fp;
     char soundCardInfo[200];
@@ -507,7 +507,7 @@ status_t AudioHardwareALSA::setMode(int mode)
     }
 
     if (mode == AUDIO_MODE_IN_CALL) {
-        if (mCallState <= CALL_INACTIVE) {
+        if (mCallState == CALL_INACTIVE) {
 #ifndef QCOM_MULTI_VOICE_SESSION_ENABLED
             ALOGV("%s() defaulting vsid and call state",__func__);
             mCallState = CALL_ACTIVE;
@@ -517,13 +517,9 @@ status_t AudioHardwareALSA::setMode(int mode)
             ALOGV("%s no op",__func__);
         }
     } else if (mode == AUDIO_MODE_NORMAL) {
-        if (mCallState != CALL_INACTIVE) {
-            // Immediate routing update on mode transition to normal
 #ifndef QCOM_MULTI_VOICE_SESSION_ENABLED
-            mCallState = CALL_INACTIVE;
+        mCallState = CALL_INACTIVE;
 #endif
-            doRouting(0,NULL);
-        }
     }
 
     return status;
@@ -1815,14 +1811,7 @@ AudioHardwareALSA::openInputStream(uint32_t devices,
         alsa_handle.rxHandle = 0;
         alsa_handle.ucMgr = mUcMgr;
         snd_use_case_get(mUcMgr, "_verb", (const char **)&use_case);
-        for(it = mDeviceList.begin();
-            it != mDeviceList.end(); ++it) {
-                if((!strcmp(it->useCase, SND_USE_CASE_VERB_HIFI_REC)) ||
-                   (!strcmp(it->useCase, SND_USE_CASE_MOD_CAPTURE_MUSIC))) {
-                    ALOGE("error:Input stream already opened for recording");
-                    return in;
-                }
-        }
+
         if ((use_case != NULL) && (strcmp(use_case, SND_USE_CASE_VERB_INACTIVE))) {
             if ((devices == AudioSystem::DEVICE_IN_VOICE_CALL) &&
                 (newMode == AUDIO_MODE_IN_CALL)) {
