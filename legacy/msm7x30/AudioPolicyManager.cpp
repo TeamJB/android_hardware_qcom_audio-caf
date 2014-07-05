@@ -33,7 +33,7 @@
 
 #include <utils/Log.h>
 
-#include "AudioPolicyManagerALSA.h"
+#include "AudioPolicyManager.h"
 #include <hardware/audio_effect.h>
 #include <hardware/audio.h>
 #include <hardware_legacy/audio_policy_conf.h>
@@ -335,7 +335,6 @@ status_t AudioPolicyManager::setDeviceConnectionState(audio_devices_t device,
             }
 
             ALOGV("setDeviceConnectionState() disconnecting device %x", device);
-            mForceDeviceChange = true;
             // remove device from available output devices
             mAvailableOutputDevices = (audio_devices_t)(mAvailableOutputDevices & ~device);
 
@@ -396,7 +395,7 @@ status_t AudioPolicyManager::setDeviceConnectionState(audio_devices_t device,
 #endif
 
         audio_devices_t newDevice = getNewDevice(mPrimaryOutput, false /*fromCache*/);
-#if defined(QCOM_FM_ENABLED) || defined(STE_FM)
+#ifdef QCOM_FM_ENABLED
         if(device == AUDIO_DEVICE_OUT_FM) {
             if (state == AudioSystem::DEVICE_STATE_AVAILABLE) {
                 ALOGV("setDeviceConnectionState() changeRefCount Inc");
@@ -616,9 +615,6 @@ void AudioPolicyManager::setPhoneState(int state)
 
     int delayMs = 0;
     if (state == AUDIO_MODE_IN_CALL &&
-#ifdef QCOM_CSDCLIENT_ENABLED
-        platform_is_Fusion3() &&
-#endif
         oldState == AUDIO_MODE_RINGTONE) {
         delayMs = 40;
     }
@@ -940,10 +936,9 @@ status_t AudioPolicyManager::startOutput(audio_io_handle_t output,
                 // module and has a current device selection that differs from selected device.
                 // In this case, the audio HAL must receive the new device selection so that it can
                 // change the device currently selected by the other active output.
-                if (mForceDeviceChange || (outputDesc->sharesHwModuleWith(desc) &&
-                    desc->device() != newDevice)) {
+                if (outputDesc->sharesHwModuleWith(desc) &&
+                    desc->device() != newDevice) {
                     force = true;
-                    mForceDeviceChange=false;
                 }
                 // wait for audio on other active outputs to be presented when starting
                 // a notification so that audio focus effect can propagate.
@@ -954,7 +949,7 @@ status_t AudioPolicyManager::startOutput(audio_io_handle_t output,
             }
         }
 
-#if defined(QCOM_FM_ENABLED) || defined(STE_FM)
+#ifdef QCOM_FM_ENABLED
         if(stream == AudioSystem::MUSIC && output == getA2dpOutput()) {
             muteWaitMs = setOutputDevice(output, newDevice, true);
         } else
@@ -1661,7 +1656,7 @@ audio_devices_t AudioPolicyManager::getDeviceForStrategy(routing_strategy strate
             }
             break;
         }
-#if defined(QCOM_FM_ENABLED) || defined(STE_FM)
+#ifdef QCOM_FM_ENABLED
         if (mAvailableOutputDevices & AUDIO_DEVICE_OUT_FM) {
             if (mForceUse[AudioSystem::FOR_MEDIA] == AudioSystem::FORCE_SPEAKER) {
                 device &= ~(AUDIO_DEVICE_OUT_WIRED_HEADSET);
@@ -1749,7 +1744,7 @@ audio_devices_t AudioPolicyManager::getDeviceForStrategy(routing_strategy strate
             if (device2 == AUDIO_DEVICE_NONE) {
                 device2 = mAvailableOutputDevices & AUDIO_DEVICE_OUT_ANLG_DOCK_HEADSET;
             }
-#if defined(QCOM_FM_ENABLED) || defined(STE_FM)
+#ifdef QCOM_FM_ENABLED
             if (device2 == AUDIO_DEVICE_NONE) {
                 device2 = mAvailableOutputDevices & AUDIO_DEVICE_OUT_FM_TX;
             }
@@ -1825,25 +1820,16 @@ uint32_t AudioPolicyManager::setOutputDevice(audio_io_handle_t output,
 
     ALOGV("setOutputDevice() prevDevice %04x", prevDevice);
 
-    // Device Routing has not been triggered in the following scenario:
-    // Start playback on HDMI/USB hs, pause it, unplug and plug HDMI
-    //cable/usb hs, resume playback, music starts on speaker. To avoid
-    //this, update mDevice even if device is 0 which triggers routing when
-    // HDMI cable/usb hs is reconnected
-    if (device != AUDIO_DEVICE_NONE ||
-        prevDevice == AUDIO_DEVICE_OUT_AUX_DIGITAL ||
-        prevDevice == AUDIO_DEVICE_OUT_ANLG_DOCK_HEADSET) {
+    if (device != AUDIO_DEVICE_NONE) {
         outputDesc->mDevice = device;
     }
-
     muteWaitMs = checkDeviceMuteStrategies(outputDesc, prevDevice, delayMs);
 
     // Do not change the routing if:
     //  - the requested device is AUDIO_DEVICE_NONE
     //  - the requested device is the same as current device and force is not specified.
     // Doing this check here allows the caller to call setOutputDevice() without conditions
-    //Force a device switch when HDMI/USB headset is disconnected
-    if ((device == AUDIO_DEVICE_NONE && !force) || ((device == prevDevice) && !force)) {
+    if ((device == AUDIO_DEVICE_NONE) || ((device == prevDevice) && !force)) {
         ALOGV("setOutputDevice() setting same device %04x or null device for output %d", device, output);
         return muteWaitMs;
     }
@@ -1921,7 +1907,7 @@ audio_devices_t AudioPolicyManager::getDeviceForInputSource(int inputSource)
             device = AUDIO_DEVICE_IN_REMOTE_SUBMIX;
         }
         break;
-#if defined(QCOM_FM_ENABLED) || defined(STE_FM)
+#ifdef QCOM_FM_ENABLED
    case AUDIO_SOURCE_FM_RX:
         device = AUDIO_DEVICE_IN_FM_RX;
         break;
@@ -1985,7 +1971,7 @@ AudioPolicyManager::device_category AudioPolicyManager::getDeviceCategory(audio_
         case AUDIO_DEVICE_OUT_BLUETOOTH_SCO_HEADSET:
         case AUDIO_DEVICE_OUT_BLUETOOTH_A2DP:
         case AUDIO_DEVICE_OUT_BLUETOOTH_A2DP_HEADPHONES:
-#if defined(QCOM_FM_ENABLED) || defined(STE_FM)
+#ifdef QCOM_FM_ENABLED
         case AUDIO_DEVICE_OUT_FM:
 #endif
             return DEVICE_CATEGORY_HEADSET;
@@ -2049,7 +2035,7 @@ status_t AudioPolicyManager::checkAndSetVolume(int stream,
         // enabled
         if (stream == AudioSystem::BLUETOOTH_SCO) {
             mpClientInterface->setStreamVolume(AudioSystem::VOICE_CALL, volume, output, delayMs);
-#if defined(QCOM_FM_ENABLED) || defined(STE_FM)
+#ifdef QCOM_FM_ENABLED
         } else if (stream == AudioSystem::MUSIC) {
             float fmVolume = -1.0;
             fmVolume = computeVolume(stream, index, output, device);

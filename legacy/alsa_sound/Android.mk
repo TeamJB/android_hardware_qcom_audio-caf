@@ -56,6 +56,10 @@ ifneq ($(ALSA_DEFAULT_SAMPLE_RATE),)
     common_cflags += -DALSA_DEFAULT_SAMPLE_RATE=$(ALSA_DEFAULT_SAMPLE_RATE)
 endif
 
+ifeq ($(strip $(AUDIO_FEATURE_ENABLED_AUXPCM_BT)),true)
+   LOCAL_CFLAGS += -DAUXPCM_BT_ENABLED
+endif
+
 #Do not use Dual MIC scenario in call feature
 #Dual MIC solution(Fluence) feature in Built-in MIC used scenarioes.
 # 1. Handset
@@ -127,6 +131,10 @@ endif
 
 ifeq ($(BOARD_HAVE_HTC_CSDCLIENT),true)
     common_cflags += -DHTC_CSDCLIENT
+endif
+
+ifeq ($(BOARD_HAVE_OPPO_CSDCLIENT),true)
+    common_cflags += -DOPPO_CSDCLIENT
 endif
 
 ifneq ($(TARGET_USES_QCOM_COMPRESSED_AUDIO),false)
